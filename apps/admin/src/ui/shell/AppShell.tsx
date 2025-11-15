@@ -68,6 +68,7 @@ const NAV: NavGroup[] = [
         icon: UsersRound,
         to: "/customers",
     },
+    
     //    {
     //     type: "link",
     //     label: "Customer Firebase",
@@ -97,6 +98,24 @@ const NAV: NavGroup[] = [
         label: "Transactions",
         icon: ScrollText,
         to: "/transactions",
+    },
+          {
+        type: "link",
+        label: "Ding Transaction",
+        icon: ScrollText,
+        to: "/dingTransaction",
+    },
+         {
+        type: "link",
+        label: "Stripe Transactions Logs",
+        icon: ScrollText,
+        to: "/stripeTransactions",
+    },
+      {
+        type: "link",
+        label: "Ding Rates",
+        icon: BadgePercent,
+        to: "/dingRate",
     },
           {
         type: "link",

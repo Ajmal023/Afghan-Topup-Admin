@@ -29,10 +29,14 @@ import { stripeRouter } from './stripe.js';
 import { promoRouter } from './promoCodeRoutes.js';
 import { transactionsRouter } from './transactions.js';
 import { packagesRouter } from './packages.js';
+import {ratesRouter} from "./rates.js"
+import { dingTransactionsRouter } from "./dingTransactions.js";
 import { settingsRouter } from './settings.js';
 import { requireAuth, requireRole } from "../middlewares/auth.js";
 import { adminCustomersRouter } from "./adminCustomers.js";
 import { providerConfigsRouter } from './providerRoutes.js';
+import { stripeTransactionLogsRouter } from "./stripeTransactionLogs.js";
+import { currencyRouter } from "./currency.js";
 
 const router = Router();
 router.use("/health", healthRouter);
@@ -43,8 +47,9 @@ const publicRouter = Router();
 publicRouter.use("/catalog", publicCatalogRouter);
 router.use("/public", publicRouter);
 router.use('/promo', promoRouter);
-router.use('/packages', packagesRouter)
-router.use("/currencies", currenciesRouter)
+router.use('/packages', packagesRouter);
+router.use("/currencies", currenciesRouter);
+router.use("/currency", currencyRouter)
 router.use('/api/products', productsRouter);
 router.use('/', stripeRouter);
 router.use("/customer/", customersRouter); 
@@ -67,6 +72,7 @@ customerRouter.use("/orders", ordersRouter);
 customerRouter.use("/payment-intents", paymentIntentsRouter);
 customerRouter.use("/tickets", ticketsRouter);
 customerRouter.use("/contacts", contactsRouter);
+
 customerRouter.use("/sessions", sessionsRouter);
 customerRouter.use("/incentives", incentivesRouter);
 router.use("/customer", requireAuth, customerRouter);
@@ -78,10 +84,13 @@ adminRouter.use("/trans", requireAuth, requireRole("admin"), transactionsRouter)
 adminRouter.use("/product-types", productTypesRouter);
 adminRouter.use("/operators", operatorsRouter);
 adminRouter.use("/products", productsRouter);
+adminRouter.use("/stripe-transaction-logs", stripeTransactionLogsRouter);
 adminRouter.use("/setaragan-topups", requireAuth, requireRole("admin"), setaraganTopupsRouter);
 adminRouter.use("/variants", variantsRouter);
 adminRouter.use("/orders", ordersRouter);
 adminRouter.use("/categories", categoriesRouter);
+adminRouter.use("/rates", ratesRouter);
+adminRouter.use("/ding-transactions", dingTransactionsRouter);
 adminRouter.use("/topup-logs", topupLogsRouter);
 adminRouter.use("/firebase", firebaseRouter);
 adminRouter.use("/tickets", ticketsRouter);

@@ -36,7 +36,7 @@ try {
 }
 
 interface Transaction {
-    id: number; // Changed from string to number
+    id: number; 
     amount: number;
     value: number;
     phone_number: string;
@@ -85,7 +85,7 @@ export default function NewTransactionsPage() {
     const [selectedStatus, setSelectedStatus] = useState<string>("all");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
-    const [selectedTransactions, setSelectedTransactions] = useState<number[]>([]); // Changed to number[]
+    const [selectedTransactions, setSelectedTransactions] = useState<number[]>([]); 
     const [page, setPage] = useState(1);
 
     useEffect(() => {
@@ -98,7 +98,7 @@ export default function NewTransactionsPage() {
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
-                limit: "20",
+                limit: "100",
                 ...(searchTerm && { search: searchTerm }),
                 ...(selectedStatus !== "all" && { status: selectedStatus }),
                 ...(startDate && { startDate }),
@@ -262,23 +262,22 @@ export default function NewTransactionsPage() {
                 </div>
             </div>
 
-
-            <Card>
+           <div className="flex  w-full justify-between">
+            <Card className="w-[29%]">
                 <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-muted-foreground">Unchecked Transactions</p>
                             <p className="text-2xl font-bold">{pagination?.totalItems || 0}</p>
                         </div>
-                        <CheckSquare className="h-8 w-8 text-blue-500" />
                     </div>
                 </CardContent>
             </Card>
 
    
-            <Card>
+            <Card className="w-[69%]">
                 <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -315,10 +314,7 @@ export default function NewTransactionsPage() {
                             onChange={(e) => setEndDate(e.target.value)}
                             className="w-full"
                         />
-                    </div>
-                    
-                    <div className="flex justify-between items-center mt-4">
-                        <Button 
+                          <Button 
                             variant="outline" 
                             onClick={clearFilters}
                             className="flex items-center gap-2"
@@ -344,8 +340,12 @@ export default function NewTransactionsPage() {
                             </div>
                         )}
                     </div>
+                    
+                    <div className="flex justify-between items-center mt-4">
+                      
+                    </div>
                 </CardContent>
-            </Card>
+            </Card></div>
 
 
         
@@ -658,7 +658,7 @@ function TransactionDetailsDialog({ transaction }: { transaction: Transaction })
                             </CardContent>
                         </Card>
 
-                        {/* Sataragan Details */}
+              
                         {transaction.ApiSataragans && transaction.ApiSataragans.length > 0 && (
                             <Card>
                                 <CardHeader>

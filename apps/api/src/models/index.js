@@ -29,11 +29,14 @@ import OtpCodeModel from "./otp_code.js";
 import TransactionModel from "./transaction.js";
 import ApiSataraganModel from "./apiSataragan.js";
 import SettingModel from "./setting.js";
+import stripeTransactionLogModel from './stripeTransactionLog.js';
 import PackageModel from "./package.js";
 import CurrencyModel1 from "./newCurrency.js";
 import SataraganBalanceModel from "./sataraganBalance.js";
 import IncentiveRequestModel from "./incentive_request.js";
 import setaraganTopupModel from "./setaraganTopup.js";
+import dingRateModel from './dingRate.js';
+import DingTransactionModel from './dingTransaction.js';
 import IncentiveRecipientModel, {
     PromoAudienceModel,
     ReferralAudienceModel,
@@ -54,9 +57,12 @@ export const ProductVariant = ProductVariantModel(sequelize);
 export const ProductCategory = ProductCategoryModel(sequelize);
 export const Operator = OperatorModel(sequelize);
 export const Customers = CustomersModel(sequelize);
+export const DingTransaction = DingTransactionModel(sequelize);
+export const DingRate = dingRateModel(sequelize);
 export const PromoCodeRequest = PromoCodeRequestModel(sequelize);
 export const Contact = ContactModel(sequelize);
 export const Order = OrderModel(sequelize);
+export const StripeTransactionLog = stripeTransactionLogModel(sequelize);
 export const OrderItem = OrderItemModel(sequelize);
 export const PaymentIntent = PaymentIntentModel(sequelize);
 export const TopupLog = TopupLogModel(sequelize);
@@ -82,6 +88,8 @@ export const Currency1 = CurrencyModel1(sequelize);
 export const SataraganBalance = SataraganBalanceModel(sequelize);
 export const SetaraganTopup = setaraganTopupModel(sequelize);
 
+DingTransaction.belongsTo(Transaction, { foreignKey: 'transaction_id' });
+Transaction.hasOne(DingTransaction, { foreignKey: 'transaction_id' });
 Transaction.hasMany(ApiSataragan, { foreignKey: "transaction_id", onDelete: "CASCADE" });
 ApiSataragan.belongsTo(Transaction, { foreignKey: "transaction_id" });
 Transaction.hasMany(ApiSataragan, { foreignKey: 'transaction_id' });
@@ -161,6 +169,13 @@ Contact.belongsTo(User, { foreignKey: "user_id" });
 User.hasMany(Contact, { foreignKey: "user_id" });
 Order.belongsTo(User, { foreignKey: "user_id" });
 User.hasMany(Order, { foreignKey: "user_id" });
+Transaction.hasMany(StripeTransactionLog, { 
+  foreignKey: 'transaction_id', 
+  onDelete: 'CASCADE' 
+});
+StripeTransactionLog.belongsTo(Transaction, { 
+  foreignKey: 'transaction_id' 
+});
 OrderItem.belongsTo(Order, { foreignKey: "order_id", onDelete: "CASCADE" });
 Order.hasMany(OrderItem, { foreignKey: "order_id" });
 OrderItem.belongsTo(ProductVariant, { foreignKey: "product_variant_id" });
@@ -207,7 +222,64 @@ PromoCode.hasMany(PromoAudience, { foreignKey: "promo_code_id", as: "audience" }
 ReferralAudience.belongsTo(ReferralCode, { foreignKey: "referral_code_id" });
 ReferralCode.hasMany(ReferralAudience, { foreignKey: "referral_code_id", as: "audience" });
 
+
+let rateSyncService = null;
+
+export async function initializeRateSyncService() {
+  try {
+    console.log('🔄 Initializing rate sync service...');
+    
+    const models = { DingRate };
+    const RateSyncService = (await import('../services/rateSyncService.js')).default;
+    rateSyncService = new RateSyncService(models);
+    
+    await rateSyncService.initializeAutoSync();
+    console.log('✅ Rate sync service initialized successfully');
+    
+    return rateSyncService;
+  } catch (error) {
+    console.error('❌ Failed to initialize rate sync service:', error);
+    return getFallbackRateSyncService();
+  }
+}
+
+function getFallbackRateSyncService() {
+  return {
+    manualSync: async () => {
+      throw new Error('Rate sync service not initialized');
+    },
+    updateSyncInterval: async () => {
+      throw new Error('Rate sync service not initialized');
+    },
+    getActiveJobs: () => [],
+    initializeAutoSync: async () => {
+      console.warn('Rate sync service not available');
+    }
+  };
+}
+
+export function getRateSyncService() {
+  if (!rateSyncService) {
+    console.warn('Rate sync service not initialized, using fallback');
+    return getFallbackRateSyncService();
+  }
+  return rateSyncService;
+}
+
 export async function syncModels() {
-    await sequelize.authenticate();
-    // await sequelize.sync({ alter: true });
+    try {
+        await sequelize.authenticate();
+        console.log('Database connection established');
+        
+
+        await sequelize.sync({ alter: false });
+        console.log('Database models synced');
+        
+    
+        await initializeRateSyncService();
+        
+    } catch (error) {
+        console.error('❌ Database sync failed:', error);
+        throw error;
+    }
 }

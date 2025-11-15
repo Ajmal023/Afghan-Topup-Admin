@@ -28,7 +28,6 @@ import ReferralUsesPage from "@/ui/referrals/ReferralUsesPage";
 import TopupQueuePage from "./ui/topups/TopupQueuePage";
 import RecurringTopupsPage from "./ui/topups/RecurringTopupsPage";
 import PackagesPage from "./ui/packages/PackagesPage";
-import EditPackagePage from "./ui/packages/EditPackagePage";
 import PromoCodesPage from "./ui/promoCode/PromoCodesPage";
 import PromoRequestsPage from "./ui/promoCodeRequest/PromoRequestPage";
 import PromoUsagePage from "./ui/promoUsage/PromoCodeUsage";
@@ -39,7 +38,10 @@ import PromoUsesPage from "./ui/promoUse/PromoUsagePage";
 import SetaraganTopupsPage from "./ui/setaraganTopupPage/SetaraganTopupsPage";
 import NewTransactionsPage from "./ui/transactionCheck/newTransactionsPage";
 import ProviderConfigsPage from "./ui/provider/ProviderPage";
-
+import EditPackagePage from "./ui/packages/EditPackagePage";
+import RatesManagement from "./ui/dingRate/RatesManagement";
+import DingTransactionsPage from "./ui/dingTransactions/DingTransactionPage";
+import StripeTransactionLogsPage from "./ui/stripeTransactions/stripe-transactions-logs";
 
 export const routes: RouteObject[] = [
     { path: "/login", element: <LoginPage /> },
@@ -69,15 +71,31 @@ export const routes: RouteObject[] = [
     path: "/packages/edit/:id",
     element: <EditPackagePage />,
 },
+{
+    path: "/dingTransaction",
+    element: <DingTransactionsPage/>,
+},
         { path: "orders", element: <OrdersPage /> },
         {
   path: "/customers",
   element: <CustomersPage />,
 },
+       {
+  path: "/dingRate",
+  element: <RatesManagement  />,
+},
+       {
+  path: "/stripeTransactions",
+  element: <StripeTransactionLogsPage  />,
+},
 {
   path: "/provider",
   element: <ProviderConfigsPage />,
 },
+// {
+//   path: "/firebase",
+//   element: <FirebaseManagement />,
+// },
       {
   path: "/transactions",
   element: <TransactionsPage />,

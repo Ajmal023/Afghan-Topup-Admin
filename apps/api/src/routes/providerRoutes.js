@@ -33,7 +33,7 @@ providerConfigsRouter.get("/", requireAuth, requireRole("admin"), async (req, re
 providerConfigsRouter.get("/active", requireAuth, async (req, res, next) => {
     try {
         const providers = await ProviderConfig.findAll({
-            where: { active: true },
+          
             order: [['name', 'ASC']]
         });
         

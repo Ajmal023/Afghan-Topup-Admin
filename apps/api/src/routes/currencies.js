@@ -58,7 +58,7 @@ export const currenciesRouter = Router();
 currenciesRouter.get("/:code", requireApiKey, async (req, res, next) => {
     try {
         const { code } = req.params;
-        
+        console.log(code, "this is code")
         const currency = await Currency1.findOne({ 
             where: { currency_country: code } 
         });

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Transaction, ApiSataragan, Setting, PromoUse, PromoCode } from "../models/index.js";
+import { Transaction, ApiSataragan, Setting, PromoUse, PromoCode, Currency1 } from "../models/index.js";
 import { Op, Sequelize } from "sequelize";
 import { requireAuth, requireRole } from "../middlewares/auth.js";
 import { requireApiKey } from "../middlewares/apiKeyAuth.js";
@@ -30,16 +30,7 @@ transactionsRouter.get("/:uid", requireApiKey, async (req, res, next) => {
 
         let finalArray = [...transactions];
         
-        if (transactions.length >= 5) {
-            const newestThree = transactions.slice(-3); 
-            const rest = transactions.slice(0, -3);    
-            
-
-            finalArray = [...newestThree, ...rest, ...newestThree];
-           
-        } else if (transactions.length >= 3) {
-           
-        }
+      
 
         const transformedTransactions = finalArray.map(transaction => {
             const transactionData = transaction.toJSON();
@@ -199,7 +190,7 @@ transactionsRouter.get("/admin/transactions/unchecked", requireAuth, requireRole
             startDate,
             endDate,
             sortBy = "createdAt",
-            sortOrder = "DESC"
+            sortOrder = "ASC"
         } = req.query;
 
         const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -363,8 +354,6 @@ transactionsRouter.get("/admin/transactions/stats", requireAuth, requireRole("ad
     try {
         const { startDate, endDate } = req.query;
         
-        console.log('Stats request:', { startDate, endDate });
-        
         const where = {};
         
         if (startDate && endDate) {
@@ -389,6 +378,52 @@ transactionsRouter.get("/admin/transactions/stats", requireAuth, requireRole("ad
 
         const totalTransactions = await Transaction.count({ where });
         
+    
+        const transactions = await Transaction.findAll({
+            where: { ...where, status: ['Paid', 'Confirmed'] }
+        });
+
+        
+  
+        let totalAmountUSD = 0;
+        let totalValueUSD = 0;
+
+        for (const transaction of transactions) {
+            const amount = parseFloat(transaction.amount) || 0;
+            const value = parseFloat(transaction.value) || 0;
+            
+   
+            const currencyCode = transaction.currency || 'USD';
+            
+         
+            
+            let currencyRate = 1;
+            
+            if (currencyCode !== 'USD') {
+                const currency = await Currency1.findOne({
+                    where: { currency_code: currencyCode }
+                });
+                
+
+                
+                if (currency && currency.rate) {
+                    currencyRate = parseFloat(currency.rate);
+                }
+            } else {
+                console.log(`Using USD (rate = 1) for transaction ${transaction.id}`);
+            }
+            
+            const amountUSD = currencyCode !== 'USD' ? amount / currencyRate : amount;
+            const valueUSD = currencyCode !== 'USD' ? value / currencyRate : value;
+            
+    
+            totalAmountUSD += amountUSD;
+            totalValueUSD += valueUSD;
+            
+          
+        }
+
+
         const statusCounts = await Transaction.findAll({
             where,
             attributes: [
@@ -399,28 +434,20 @@ transactionsRouter.get("/admin/transactions/stats", requireAuth, requireRole("ad
             group: ['status']
         });
 
-        const totalAmount = await Transaction.sum('amount', { 
-            where: { ...where, status: ['Paid', 'Confirmed'] } 
-        });
-        const totalValue = await Transaction.sum('value', { 
-            where: { ...where, status: ['Paid', 'Confirmed'] } 
-        });
-
-
         const successCount = await Transaction.count({ 
             where: { ...where, status: ['Paid', 'Confirmed'] } 
         });
+        
         const successRate = totalTransactions > 0 ? (successCount / totalTransactions) * 100 : 0;
 
-   
         const uncheckedCount = await Transaction.count({ 
             where: { ...where, is_checked: false } 
         });
 
         const stats = {
             total: totalTransactions,
-            totalAmount: totalAmount || 0,
-            totalValue: totalValue || 0,
+            totalAmount: Math.round(totalAmountUSD * 100) / 100,
+            totalValue: Math.round(totalValueUSD * 100) / 100,
             successRate: Math.round(successRate * 100) / 100,
             uncheckedCount: uncheckedCount,
             byStatus: statusCounts.reduce((acc, item) => {

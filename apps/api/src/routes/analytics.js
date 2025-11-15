@@ -6,7 +6,8 @@ import {
     Package, 
     PromoCode, 
     PromoUse,
-    SataraganBalance 
+    SataraganBalance, 
+    Currency1
 } from "../models/index.js";
 import { Op, Sequelize } from "sequelize";
 import { requireAuth, requireRole } from "../middlewares/auth.js";
@@ -47,8 +48,6 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
         const { period = 'today' } = req.query;
         const { startDate, endDate } = getDateRange(period);
 
-        console.log('Analytics request:', { period, startDate, endDate });
-
         const dateWhere = {
             createdAt: {
                 [Op.between]: [startDate, endDate]
@@ -56,58 +55,121 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
         };
         const customerWhere = period === 'today' ? dateWhere : {};
 
+      
+        const successfulTransactions = await Transaction.findAll({
+            where: {
+                ...dateWhere,
+                status: { [Op.in]: ['Paid', 'Confirmed'] },
+                stripe_status: 'succeeded'
+            }
+        });
+
+   
+        let totalOriginalUSD = 0;
+        let totalDiscountUSD = 0;
+        let totalFinalUSD = 0;
+        let totalTopupUSD = 0;
+
+        for (const transaction of successfulTransactions) {
+            const originalAmount = parseFloat(transaction.original_amount) || 0;
+            const discountAmount = parseFloat(transaction.discount_amount) || 0;
+            const finalAmount = parseFloat(transaction.amount) || 0;
+            const topupValue = parseFloat(transaction.value) || 0;
+            
+            const currencyCode = transaction.currency || 'USD';
+            let currencyRate = 1;
+
+            if (currencyCode !== 'USD') {
+                const currency = await Currency1.findOne({
+                    where: { currency_code: currencyCode }
+                });
+                
+                if (currency && currency.rate) {
+                    currencyRate = parseFloat(currency.rate);
+                }
+            }
+            
+        
+            if (currencyCode !== 'USD') {
+                totalOriginalUSD += originalAmount / currencyRate;
+                totalDiscountUSD += discountAmount / currencyRate;
+                totalFinalUSD += finalAmount / currencyRate;
+                totalTopupUSD += topupValue / currencyRate;
+            } else {
+                totalOriginalUSD += originalAmount;
+                totalDiscountUSD += discountAmount;
+                totalFinalUSD += finalAmount;
+                totalTopupUSD += topupValue;
+            }
+        }
+
+      
+        const dailyTransactionsRaw = await Transaction.findAll({
+            where: {
+                createdAt: {
+                    [Op.between]: [new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), new Date()]
+                },
+                status: { [Op.in]: ['Paid', 'Confirmed'] }
+            }
+        });
+
+  
+        const dailyTransactionsMap = {};
+        
+        for (const transaction of dailyTransactionsRaw) {
+            const date = transaction.createdAt.toISOString().split('T')[0];
+            const amount = parseFloat(transaction.amount) || 0;
+            const currencyCode = transaction.currency || 'USD';
+            let currencyRate = 1;
+
+            if (currencyCode !== 'USD') {
+                const currency = await Currency1.findOne({
+                    where: { currency_code: currencyCode }
+                });
+                
+                if (currency && currency.rate) {
+                    currencyRate = parseFloat(currency.rate);
+                }
+            }
+
+            const amountUSD = currencyCode !== 'USD' ? amount / currencyRate : amount;
+
+            if (!dailyTransactionsMap[date]) {
+                dailyTransactionsMap[date] = {
+                    date: date,
+                    count: 0,
+                    amount: 0
+                };
+            }
+
+            dailyTransactionsMap[date].count += 1;
+            dailyTransactionsMap[date].amount += amountUSD;
+        }
+
+  
+        const dailyTransactions = Object.values(dailyTransactionsMap)
+            .map(item => ({
+                ...item,
+                amount: Math.round(item.amount * 100) / 100
+            }))
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
         const [
             totalCustomers,
             newCustomers,
-            successTransactions,
-            transactionAmounts,
-            topupData,
             currentBalance,
             totalPackages,
             promoCodeStats,
             promoUsageStats,
-            successTopups,
-            dailyTransactions,
             operatorTopups,
             promoCodeTypes
         ] = await Promise.all([
             Customers.count(),
             Customers.count({ where: dateWhere }),
-
-            Transaction.count({
-                where: {
-                    ...dateWhere,
-                    status: { [Op.in]: ['Paid', 'Confirmed'] }
-                }
-            }),
-
-            Transaction.findAll({
-                where: {
-                    ...dateWhere,
-                    status: { [Op.in]: ['Paid', 'Confirmed'] },
-                    stripe_status: 'succeeded'
-                },
-                attributes: [
-                    [Sequelize.fn('SUM', Sequelize.col('original_amount')), 'totalOriginal'],
-                    [Sequelize.fn('SUM', Sequelize.col('discount_amount')), 'totalDiscount'],
-                    [Sequelize.fn('SUM', Sequelize.col('amount')), 'totalFinal']
-                ],
-                raw: true
-            }),
-
-                Transaction.sum('value', {
-                where: {
-                    ...dateWhere,
-                    status: { [Op.in]: ['Paid', 'Confirmed'] },
-                    stripe_status: 'succeeded'
-                }
-                }),
-
             SataraganBalance.findOne({
                 order: [['createdAt', 'DESC']],
                 attributes: ['current_balance']
             }),
-
             Package.count(),
             Promise.all([
                 PromoCode.count(),
@@ -129,30 +191,6 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
                 ],
                 raw: true
             }),
-            Transaction.count({
-            where: {
-                ...dateWhere,
-                status: { [Op.in]: ['Paid', 'Confirmed'] },
-                stripe_status: 'succeeded'
-            }
-            }),
-            Transaction.findAll({
-                where: {
-                    createdAt: {
-                        [Op.between]: [new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), new Date()]
-                    },
-                    status: { [Op.in]: ['Paid', 'Confirmed'] }
-                },
-                attributes: [
-                    [Sequelize.fn('DATE', Sequelize.col('createdAt')), 'date'],
-                    [Sequelize.fn('COUNT', Sequelize.col('id')), 'count'],
-                    [Sequelize.fn('SUM', Sequelize.col('amount')), 'amount']
-                ],
-                group: [Sequelize.fn('DATE', Sequelize.col('createdAt'))],
-                order: [[Sequelize.fn('DATE', Sequelize.col('createdAt')), 'ASC']],
-                raw: true
-            }),
-
             SetaraganTopup.findAll({
                 where: {
                     ...dateWhere,
@@ -166,8 +204,6 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
                 group: ['operator_id'],
                 raw: true
             }),
-
-      
             PromoCode.findAll({
                 attributes: [
                     'discount_type',
@@ -178,27 +214,20 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
             })
         ]);
 
- 
-        const transactionAmount = transactionAmounts[0] || { 
-            totalOriginal: 0, 
-            totalDiscount: 0, 
-            totalFinal: 0 
-        };
         const promoUsage = promoUsageStats[0] || { totalUsage: 0, totalDiscountAmount: 0 };
         const [totalPromoCodes, usedPromoCodes, newPromoCodes] = promoCodeStats;
 
         const analyticsData = {
             cards: {
-         
                 totalCustomers: totalCustomers || 0,
                 newCustomers: newCustomers || 0,
-                successTransactions: successTransactions || 0,
-                totalOriginalAmount: parseFloat(transactionAmount.totalOriginal || 0),
-                totalDiscountAmount: parseFloat(transactionAmount.totalDiscount || 0),
-                totalFinalAmount: parseFloat(transactionAmount.totalFinal || 0),
-                totalTopupAmount: parseFloat(topupData || 0),
+                successTransactions: successfulTransactions.length || 0,
+                totalOriginalAmount: Math.round(totalOriginalUSD * 100) / 100,
+                totalDiscountAmount: Math.round(totalDiscountUSD * 100) / 100,
+                totalFinalAmount: Math.round(totalFinalUSD * 100) / 100,
+                totalTopupAmount: Math.round(totalTopupUSD * 100) / 100,
                 currentBalance: currentBalance ? parseFloat(currentBalance.current_balance) : 0,
-                successTopups: successTopups || 0,
+                successTopups: successfulTransactions.length || 0,
                 totalPackages: totalPackages || 0,
                 totalPromoCodes: totalPromoCodes || 0,
                 newPromoCodes: newPromoCodes || 0,
@@ -209,11 +238,7 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
             },
 
             charts: {
-                dailyTransactions: dailyTransactions.map(item => ({
-                    date: item.date,
-                    count: parseInt(item.count) || 0,
-                    amount: parseFloat(item.amount) || 0
-                })),
+                dailyTransactions: dailyTransactions,
                 operatorTopups: operatorTopups.map(item => ({
                     operator: `Operator ${item.operator_id}`,
                     count: parseInt(item.count) || 0,
@@ -229,15 +254,12 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
                 period,
                 startDate,
                 endDate,
-                generatedAt: new Date()
+                generatedAt: new Date(),
+                currency: 'USD' 
             }
         };
 
-        console.log('Analytics data generated successfully');
-        console.log('Customer Stats:', {
-            totalCustomers: analyticsData.cards.totalCustomers,
-            newCustomers: analyticsData.cards.newCustomers
-        });
+  
 
         res.json({ success: true, data: analyticsData });
 
@@ -250,7 +272,6 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
         });
     }
 });
-
 
 analyticsRouter.get("/admin/analytics/customers", requireAuth, requireRole("admin"), async (req, res) => {
     try {
