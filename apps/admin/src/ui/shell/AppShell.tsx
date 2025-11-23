@@ -136,12 +136,24 @@ const NAV: NavGroup[] = [
         icon: ListChecks,
         to: "/transaction-check",
     },
-    
           {
         type: "link",
         label: "Promo Requests",
         icon: BadgePercent,
         to: "/promo-requests",
+    },
+    
+    //  {
+    //     type: "link",
+    //     label: "Courosels Page",
+    //     icon: BadgePercent,
+    //     to: "/courosels",
+    // },
+    {
+        type: "link",
+        label: "Dialogs Page",
+        icon: BadgePercent,
+        to: "/dialogs",
     },
           {
         type: "link",

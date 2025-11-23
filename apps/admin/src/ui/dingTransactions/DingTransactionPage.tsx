@@ -81,9 +81,8 @@ export default function DingTransactionsPage() {
     const [page, setPage] = useState(1);
 
     useEffect(() => {
-        const today = new Date().toISOString().split('T')[0];
-        setStartDate(today);
-        setEndDate(today);
+        setStartDate("");
+        setEndDate("");
     }, []);
 
     const { data: transactionsResponse, isLoading, error } = useQuery<DingTransactionsResponse>({
@@ -123,9 +122,8 @@ export default function DingTransactionsPage() {
         setSearchTerm("");
         setSelectedStatus("all");
         setPhoneNumber("");
-        const today = new Date().toISOString().split('T')[0];
-        setStartDate(today);
-        setEndDate(today);
+        setStartDate("");
+        setEndDate("");
         setPage(1);
     };
 

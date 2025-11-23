@@ -11,7 +11,7 @@ export const transactionsRouter = Router();
 transactionsRouter.get("/:uid", requireApiKey, async (req, res, next) => {
     try {
         const { uid } = req.params;
-        console.log("Fetching transactions for UID:", uid);
+        // console.log("Fetching transactions for UID:", uid);
 
         const transactions = await Transaction.findAll({
             where: {
@@ -21,12 +21,12 @@ transactionsRouter.get("/:uid", requireApiKey, async (req, res, next) => {
             order: [['createdAt', 'ASC']]  
         });
 
-        console.log(`Raw DB count: ${transactions.length}`);
+        // console.log(`Raw DB count: ${transactions.length}`);
         
-        console.log("Raw transactions order from DB (first 5):");
-        transactions.slice(0, 5).forEach((t, index) => {
-            console.log(`   [${index}] ID: ${t.id}, CreatedAt: ${t.createdAt}`);
-        });
+        // console.log("Raw transactions order from DB (first 5):");
+        // transactions.slice(0, 5).forEach((t, index) => {
+        //     console.log(`   [${index}] ID: ${t.id}, CreatedAt: ${t.createdAt}`);
+        // });
 
         let finalArray = [...transactions];
         
@@ -59,13 +59,13 @@ transactionsRouter.get("/:uid", requireApiKey, async (req, res, next) => {
         });
 
 
-        transformedTransactions.slice(0, 5).forEach((t, index) => {
-            console.log(`   [${index}] ID: ${t.id}, created_at: ${t.createdAt}`);
-        });
-        if (transformedTransactions.length > 10) {
-            console.log(`   ... and ${transformedTransactions.length - 5} more`);
-            console.log(`   Last 3: [${transformedTransactions.slice(-3).map(t => t.id).join(', ')}]`);
-        }
+        // transformedTransactions.slice(0, 5).forEach((t, index) => {
+        //     console.log(`   [${index}] ID: ${t.id}, created_at: ${t.createdAt}`);
+        // });
+        // if (transformedTransactions.length > 10) {
+        //     console.log(`   ... and ${transformedTransactions.length - 5} more`);
+        //     console.log(`   Last 3: [${transformedTransactions.slice(-3).map(t => t.id).join(', ')}]`);
+        // }
 
    
         const afterReversal = [...transformedTransactions].reverse();
@@ -353,14 +353,14 @@ transactionsRouter.post("/mark-paid", async (req, res, next) => {
 transactionsRouter.get("/admin/transactions/stats", requireAuth, requireRole("admin"), async (req, res, next) => {
     try {
         const { startDate, endDate } = req.query;
-        
+
         const where = {};
-        
+
         if (startDate && endDate) {
             const start = new Date(startDate);
             const end = new Date(endDate);
             end.setHours(23, 59, 59, 999);
-            
+
             where.createdAt = {
                 [Op.between]: [start, end]
             };
@@ -370,59 +370,47 @@ transactionsRouter.get("/admin/transactions/stats", requireAuth, requireRole("ad
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
             tomorrow.setHours(0, 0, 0, 0);
-            
+
             where.createdAt = {
                 [Op.between]: [today, tomorrow]
             };
         }
 
         const totalTransactions = await Transaction.count({ where });
-        
-    
+
         const transactions = await Transaction.findAll({
             where: { ...where, status: ['Paid', 'Confirmed'] }
         });
 
-        
-  
         let totalAmountUSD = 0;
-        let totalValueUSD = 0;
+        let totalValue = 0;
 
         for (const transaction of transactions) {
             const amount = parseFloat(transaction.amount) || 0;
             const value = parseFloat(transaction.value) || 0;
-            
-   
+
             const currencyCode = transaction.currency || 'USD';
-            
-         
-            
+
             let currencyRate = 1;
-            
+
             if (currencyCode !== 'USD') {
                 const currency = await Currency1.findOne({
                     where: { currency_code: currencyCode }
                 });
-                
 
-                
                 if (currency && currency.rate) {
                     currencyRate = parseFloat(currency.rate);
                 }
             } else {
-                console.log(`Using USD (rate = 1) for transaction ${transaction.id}`);
+                // console.log(`Using USD (rate = 1) for transaction ${transaction.id}`);
             }
-            
-            const amountUSD = currencyCode !== 'USD' ? amount / currencyRate : amount;
-            const valueUSD = currencyCode !== 'USD' ? value / currencyRate : value;
-            
-    
-            totalAmountUSD += amountUSD;
-            totalValueUSD += valueUSD;
-            
-          
-        }
 
+            const amountUSD = currencyCode !== 'USD' ? amount / currencyRate : amount;
+
+      
+            totalAmountUSD += amountUSD;
+            totalValue += value;
+        }
 
         const statusCounts = await Transaction.findAll({
             where,
@@ -434,20 +422,20 @@ transactionsRouter.get("/admin/transactions/stats", requireAuth, requireRole("ad
             group: ['status']
         });
 
-        const successCount = await Transaction.count({ 
-            where: { ...where, status: ['Paid', 'Confirmed'] } 
+        const successCount = await Transaction.count({
+            where: { ...where, status: ['Paid', 'Confirmed'] }
         });
-        
+
         const successRate = totalTransactions > 0 ? (successCount / totalTransactions) * 100 : 0;
 
-        const uncheckedCount = await Transaction.count({ 
-            where: { ...where, is_checked: false } 
+        const uncheckedCount = await Transaction.count({
+            where: { ...where, is_checked: false }
         });
 
         const stats = {
             total: totalTransactions,
             totalAmount: Math.round(totalAmountUSD * 100) / 100,
-            totalValue: Math.round(totalValueUSD * 100) / 100,
+            totalValue: Math.round(totalValue * 100) / 100,
             successRate: Math.round(successRate * 100) / 100,
             uncheckedCount: uncheckedCount,
             byStatus: statusCounts.reduce((acc, item) => {
@@ -468,100 +456,104 @@ transactionsRouter.get("/admin/transactions/stats", requireAuth, requireRole("ad
 
 
 transactionsRouter.get("/admin/transactions", requireAuth, requireRole("admin"), async (req, res, next) => {
-    try {
-        const {
-            page = 1,
-            limit = 20,
-            search = "",
-            status,
-            startDate,
-            endDate,
-            uid,
-            phone_number,
-            is_checked,
-            sortBy = "createdAt",
-            sortOrder = "DESC"
-        } = req.query;
+  const startTime = Date.now();
 
-        const offset = (parseInt(page) - 1) * parseInt(limit);
-        
-        const where = {};
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search = "",
+      status,
+      startDate,
+      endDate,
+      uid,
+      phone_number,
+      is_checked,
+      sortBy = "createdAt",
+      sortOrder = "DESC"
+    } = req.query;
 
-        if (status && status !== 'all') {
-            where.status = status;
-        }
+    const pageNum = parseInt(page, 10);
+    const pageSize = parseInt(limit, 10);
+    const offset = (pageNum - 1) * pageSize;
 
-        if (is_checked !== undefined) {
-            where.is_checked = is_checked === 'true';
-        }
+    const where = {};
 
-        if (startDate && endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
-            
-            where.createdAt = {
-                [Op.between]: [start, end]
-            };
-        }
-
-        if (search) {
-                 where[Op.or] = [
-  { id: { [Op.like]: `%${search}%` } },
-  { uid: { [Op.like]: `%${search}%` } },
-  { phone_number: { [Op.like]: `%${search}%` } },
-  { payment_id: { [Op.like]: `%${search}%` } }
-];
-        }
-
-        if (uid) {
-            where.uid = { [Op.iLike]: `%${uid}%` };
-        }
-
-        if (phone_number) {
-            where.phone_number = { [Op.iLike]: `%${phone_number}%` };
-        }
-
-        const { count, rows: transactions } = await Transaction.findAndCountAll({
-            where,
-            include: [
-                {
-                    model: ApiSataragan,
-                    attributes: ['id', 'status', 'message', 'txn_id', 'createdAt']
-                },
-                {
-                    model: PromoUse,
-                    as: 'PromoUses',
-                    required: false,
-                    include: [{
-                        model: PromoCode,
-                        as: 'PromoCode',
-                        attributes: ['code', 'discount_type', 'discount_value']
-                    }]
-                }
-            ],
-            order: [[sortBy, sortOrder.toUpperCase()]],
-            offset,
-            limit: parseInt(limit)
-        });
-
-        const totalPages = Math.ceil(count / parseInt(limit));
-
-        res.json({
-            data: transactions,
-            pagination: {
-                currentPage: parseInt(page),
-                totalPages,
-                totalItems: count,
-                itemsPerPage: parseInt(limit),
-                hasNextPage: page < totalPages,
-                hasPrevPage: page > 1
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching admin transactions:', error);
-        res.status(500).json({ error: 'Internal server error' });
+    if (status && status !== 'all') {
+      where.status = status;
     }
+
+    if (is_checked !== undefined) {
+      where.is_checked = is_checked === 'true';
+    }
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      where.createdAt = { [Op.between]: [start, end] };
+    }
+
+    if (search) {
+      where[Op.or] = [
+        { id: { [Op.like]: `%${search}%` } },
+        { uid: { [Op.like]: `%${search}%` } },
+        { phone_number: { [Op.like]: `%${search}%` } },
+        { payment_id: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    if (uid) {
+      where.uid = { [Op.iLike]: `%${uid}%` };
+    }
+
+    if (phone_number) {
+      where.phone_number = { [Op.iLike]: `%${phone_number}%` };
+    }
+
+    const { count, rows: transactions } = await Transaction.findAndCountAll({
+      where,
+      include: [
+        {
+          model: ApiSataragan,
+          attributes: ['id', 'status', 'message', 'txn_id', 'createdAt']
+        },
+        {
+          model: PromoUse,
+          as: 'PromoUses',
+          required: false,
+          include: [{
+            model: PromoCode,
+            as: 'PromoCode',
+            attributes: ['code', 'discount_type', 'discount_value']
+          }]
+        }
+      ],
+      order: [[sortBy, sortOrder.toUpperCase()]],
+      offset,
+      limit: pageSize,
+      raw: false 
+    });
+
+    const totalPages = Math.ceil(count / pageSize);
+
+    res.json({
+      data: transactions,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems: count,
+        itemsPerPage: pageSize,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1
+      }
+    });
+
+    console.log(`[ADMIN TRANSACTIONS] Page ${pageNum} - ${Date.now() - startTime}ms`);
+  } catch (error) {
+    console.error('Error fetching admin transactions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 

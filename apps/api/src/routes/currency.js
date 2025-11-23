@@ -11,9 +11,9 @@ export const currencyRouter = Router();
 currencyRouter.get("/:code", requireApiKey, async (req, res, next) => {
     try {
         const { code } = req.params;
-        console.log('💰 [Backend] Currency request for country code:', code);
+        console.log('[Backend] Currency request for country code:', code);
         
-        // Complete country code to name mapping
+    
         const countryCodeToNameMap = {
             'US': 'United States',
             'AF': 'Afghanistan',
@@ -147,7 +147,6 @@ currencyRouter.get("/:code", requireApiKey, async (req, res, next) => {
             'NG': 'Nigeria',
             'MK': 'North Macedonia',
             'NO': 'Norway',
-            'OM': 'Oman',
             'PK': 'Pakistan',
             'PW': 'Palau',
             'PS': 'Palestine',
@@ -217,7 +216,7 @@ currencyRouter.get("/:code", requireApiKey, async (req, res, next) => {
         const countryName = countryCodeToNameMap[code];
         
         if (!countryName) {
-            console.log('❌ [Backend] Country code not found in map:', code);
+            console.log('[Backend] Country code not found in map:', code);
             return res.json({
                 data: {
                     rate: "1.0000",
@@ -226,16 +225,16 @@ currencyRouter.get("/:code", requireApiKey, async (req, res, next) => {
             });
         }
         
-        console.log('🗺️ [Backend] Looking up currency for country:', countryName);
+        console.log('[Backend] Looking up currency for country:', countryName);
         
         const currency = await Currency1.findOne({ 
             where: { currency_country: countryName } 
         });
 
         if (!currency) {
-            console.log('❌ [Backend] No currency found for country:', countryName);
+            console.log('[Backend] No currency found for country:', countryName);
             
-            // Return USD as default
+       
             return res.json({
                 data: {
                     rate: "1.0000",
@@ -244,7 +243,7 @@ currencyRouter.get("/:code", requireApiKey, async (req, res, next) => {
             });
         }
 
-        console.log('✅ [Backend] Returning currency:', currency.currency_code, 'for country:', countryName);
+        console.log('[Backend] Returning currency:', currency.currency_code, 'for country:', countryName);
         res.json({
             data: {
                 rate: currency.rate.toString(),
@@ -252,7 +251,7 @@ currencyRouter.get("/:code", requireApiKey, async (req, res, next) => {
             }
         });
     } catch (error) {
-        console.error('💥 [Backend] Error in currency endpoint:', error);
+        console.error('[Backend] Error in currency endpoint:', error);
         if (error.message.includes("Unauthorized")) {
             return res.status(401).json({ data: "Unauthorized" });
         }

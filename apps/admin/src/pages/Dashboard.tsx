@@ -172,9 +172,7 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-                    <p className="text-muted-foreground">
-                        Comprehensive overview of your business performance
-                    </p>
+                   
                 </div>
                 
                 <div className="flex gap-2">

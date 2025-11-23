@@ -162,7 +162,7 @@ export default function RatesManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Ding Rates Management</h1>
-          <p className="text-muted-foreground">Manage provider exchange rates and auto-sync intervals</p>
+          {/* <p className="text-muted-foreground">Manage provider exchange rates and auto-sync intervals</p> */}
         </div>
         <div className="flex gap-2">
           <Button

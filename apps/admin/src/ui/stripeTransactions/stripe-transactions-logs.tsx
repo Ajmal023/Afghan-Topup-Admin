@@ -91,7 +91,7 @@ const safeToNumber = (value: number | string): number => {
     return 0;
 };
 
-// Helper function to safely format currency
+
 const safeToFixed = (value: number | string, decimals: number = 2): string => {
     const num = safeToNumber(value);
     return num.toFixed(decimals);
@@ -219,7 +219,7 @@ export default function StripeTransactionLogsPage() {
             </div>
 
      
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between">
@@ -250,6 +250,17 @@ export default function StripeTransactionLogsPage() {
                                 <p className="text-2xl font-bold">${safeToFixed(stats?.totalFees || 0)}</p>
                             </div>
                             <FileText className="h-8 w-8 text-amber-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+                    <Card>
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Net Amount</p>
+                                <p className="text-2xl font-bold">${safeToFixed(stats?.totalNetAmount || 0)}</p>
+                            </div>
+                            <DollarSign className="h-8 w-8 text-green-500" />
                         </div>
                     </CardContent>
                 </Card>

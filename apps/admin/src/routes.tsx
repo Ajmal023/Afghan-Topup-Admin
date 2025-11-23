@@ -42,6 +42,8 @@ import EditPackagePage from "./ui/packages/EditPackagePage";
 import RatesManagement from "./ui/dingRate/RatesManagement";
 import DingTransactionsPage from "./ui/dingTransactions/DingTransactionPage";
 import StripeTransactionLogsPage from "./ui/stripeTransactions/stripe-transactions-logs";
+import DialogsPage from "./ui/dialogsPage/DialogsPage";
+import CarouselsPage from "./ui/carouselsPage/CarouselsPage";
 
 export const routes: RouteObject[] = [
     { path: "/login", element: <LoginPage /> },
@@ -66,6 +68,18 @@ export const routes: RouteObject[] = [
 {
     path: "/packages",
     element: <PackagesPage />,
+},
+{
+    path: "/packages",
+    element: <PackagesPage />,
+},
+{
+    path: "/dialogs",
+    element: <DialogsPage />,
+},
+{
+    path: "/courosels",
+    element: <CarouselsPage />,
 },
 {
     path: "/packages/edit/:id",

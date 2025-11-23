@@ -55,7 +55,7 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
         };
         const customerWhere = period === 'today' ? dateWhere : {};
 
-      
+      const t0 = Date.now();
         const successfulTransactions = await Transaction.findAll({
             where: {
                 ...dateWhere,
@@ -63,6 +63,7 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
                 stripe_status: 'succeeded'
             }
         });
+        console.log("Transaction.findAll(successfulTransactions) took", Date.now() - t0, "ms");
 
    
         let totalOriginalUSD = 0;
@@ -103,7 +104,7 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
             }
         }
 
-      
+      const t1 = Date.now();
         const dailyTransactionsRaw = await Transaction.findAll({
             where: {
                 createdAt: {
@@ -112,6 +113,7 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
                 status: { [Op.in]: ['Paid', 'Confirmed'] }
             }
         });
+console.log("Transaction.findAll(dailyTransactionsRaw) took", Date.now() - t1, "ms");
 
   
         const dailyTransactionsMap = {};
@@ -153,6 +155,7 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
                 amount: Math.round(item.amount * 100) / 100
             }))
             .sort((a, b) => new Date(a.date) - new Date(b.date));
+const t2 = Date.now();
 
         const [
             totalCustomers,
@@ -213,6 +216,7 @@ analyticsRouter.get("/admin/analytics", requireAuth, requireRole("admin"), async
                 raw: true
             })
         ]);
+console.log("Promise.all analytics queries took", Date.now() - t2, "ms");
 
         const promoUsage = promoUsageStats[0] || { totalUsage: 0, totalDiscountAmount: 0 };
         const [totalPromoCodes, usedPromoCodes, newPromoCodes] = promoCodeStats;

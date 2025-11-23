@@ -3,9 +3,14 @@ import bcrypt from "bcryptjs";
 import { createServer } from "./server.js";
 
 import { syncModels, User } from "./models/index.js"; 
+import redis, { initRedis } from "./utils/redis.js";
 
+
+
+await initRedis();
 
 const port = Number(process.env.PORT || 3000);
+
 const app = await createServer();
 
 await syncModels();

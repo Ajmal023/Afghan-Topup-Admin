@@ -33,7 +33,7 @@ export class StripeService {
     }
  async createStripeTransactionLog(transaction, balanceTransaction, charge, paymentIntent) {
         try {
-            console.log('Creating Stripe transaction log for transaction:', transaction.id);
+            // console.log('Creating Stripe transaction log for transaction:', transaction.id);
             
             const feeBreakdown = balanceTransaction.fee_details ? balanceTransaction.fee_details.map(fee => ({
                 type: fee.type,
@@ -64,10 +64,10 @@ export class StripeService {
                 description: charge.description
             };
 
-            console.log('Stripe transaction log data:', logData);
+            // console.log('Stripe transaction log data:', logData);
             
             const stripeLog = await StripeTransactionLog.create(logData);
-            console.log('Stripe transaction log created successfully:', stripeLog.id);
+            // console.log('Stripe transaction log created successfully:', stripeLog.id);
             
             return stripeLog;
         } catch (error) {
@@ -90,9 +90,9 @@ export class StripeService {
                         provider: Topups[providerIdentifier],
                         identifier: providerIdentifier
                     };
-                    console.log(`Active provider loaded: ${providerIdentifier} - ${activeProviderConfig.name}`);
+                    // console.log(`Active provider loaded: ${providerIdentifier} - ${activeProviderConfig.name}`);
                 } else {
-                    console.log(`Provider not found in Topups: ${providerIdentifier}, using Setaragan as fallback`);
+                    // console.log(`Provider not found in Topups: ${providerIdentifier}, using Setaragan as fallback`);
                     this.activeProvider = {
                         config: activeProviderConfig,
                         provider: Topups.setaragan,
@@ -100,7 +100,7 @@ export class StripeService {
                     };
                 }
             } else {
-                console.log('No active provider configured, using Setaragan as default');
+                // console.log('No active provider configured, using Setaragan as default');
                 this.activeProvider = {
                     config: null,
                     provider: Topups.setaragan,
@@ -154,18 +154,18 @@ export class StripeService {
         
     
         if (prefix === '74') {
-            console.log('Number starts with 74 - routing to HesabPay');
+            // console.log('Number starts with 74 - routing to HesabPay');
             return await this.sendToHesabPay(transaction);
         }
 
         const { provider, identifier } = this.activeProvider;
 
-        console.log(`Sending to active provider (${identifier}) - Transaction:`, {
-            phone_number: transaction.phone_number,
-            prefix: prefix,
-            value: transaction.value,
-            transaction_id: transaction.id
-        });
+        // console.log(`Sending to active provider (${identifier}) - Transaction:`, {
+        //     phone_number: transaction.phone_number,
+        //     prefix: prefix,
+        //     value: transaction.value,
+        //     transaction_id: transaction.id
+        // });
 
               if (identifier === 'ding') {
             return await this.sendToDingWithCost(transaction);
@@ -183,7 +183,7 @@ export class StripeService {
             externalId: transaction.id.toString()
         });
 
-        console.log(`${identifier} provider response:`, result);
+        // console.log(`${identifier} provider response:`, result);
         return this.mapProviderResponse(transaction, result, identifier);
 
     } catch (error) {
@@ -202,12 +202,12 @@ export class StripeService {
             throw error;
         }
 
-        console.log('Falling back to Setaragan due to provider error');
+        // console.log('Falling back to Setaragan due to provider error');
         return await this.sendToSataragan(transaction);
     }
     }
 mapProviderResponse(transaction, result, providerName) {
-    console.log('Mapping provider response for:', providerName, result);
+    // console.log('Mapping provider response for:', providerName, result);
     
     const providerTxnId = result.provider_txn_id || result.hesab_transaction_id || result.setaragan_txn_id;
     const hesabTransactionId = result.hesab_transaction_id;
@@ -220,7 +220,7 @@ mapProviderResponse(transaction, result, providerName) {
     
  
 if (providerName === 'ding' && result.rate_used) {
-    console.log('💰 DING RATE TRANSACTION DETAILS:', {
+    console.log('DING RATE TRANSACTION DETAILS:', {
         transaction_id: transaction.id,
         phone_number: transaction.phone_number,
         prefix: transaction.phone_number.substring(0, 2),
@@ -335,7 +335,7 @@ if (providerName === 'ding' && result.rate_used) {
                 externalId: transaction.id.toString()
             });
 
-            console.log('Sataragan provider response:', result);
+            // console.log('Sataragan provider response:', result);
 
             if (result.status === "success" || result.status === "accepted") {
                 return {
@@ -390,14 +390,14 @@ if (providerName === 'ding' && result.rate_used) {
 
 async sendToDingWithCost(transaction) {
     try {
-        console.log('Processing Ding transaction with rate-based calculation:', {
-            phone_number: transaction.phone_number,
-            original_Value: transaction.value,
-            currency: transaction.currency
-        });
+        // console.log('Processing Ding transaction with rate-based calculation:', {
+        //     phone_number: transaction.phone_number,
+        //     original_Value: transaction.value,
+        //     currency: transaction.currency
+        // });
 
         const prefix = transaction.phone_number.substring(0, 2);
-        console.log('Extracted prefix:', prefix);
+        // console.log('Extracted prefix:', prefix);
 
         const dingRate = await sequelize.models.DingRate.findOne({
             where: {
@@ -407,49 +407,49 @@ async sendToDingWithCost(transaction) {
         });
 
         if (!dingRate) {
-            console.error(`❌ No Ding rate found for prefix: ${prefix} - Cannot proceed with Ding provider`);
+            // console.error(`❌ No Ding rate found for prefix: ${prefix} - Cannot proceed with Ding provider`);
             throw new Error(`Ding provider not available for prefix ${prefix}. Please try another payment method.`);
         }
 
-        console.log('Found Ding rate:', {
-            prefix: dingRate.prefix,
-            rate: dingRate.rate,
-            name: dingRate.name,
-            skuCode: dingRate.skuCode
-        });
+        // console.log('Found Ding rate:', {
+        //     prefix: dingRate.prefix,
+        //     rate: dingRate.rate,
+        //     name: dingRate.name,
+        //     skuCode: dingRate.skuCode
+        // });
 
         const originalValue = parseFloat(transaction.value);
         const rate = parseFloat(dingRate.rate);
         
         const costAmount = originalValue / rate;
         
-        console.log('Ding cost calculation:', {
-            original_value: originalValue,
-            rate: rate,
-            cost_amount: costAmount,
-            formula: `${originalValue} / ${rate} = ${costAmount}`
-        });
+        // console.log('Ding cost calculation:', {
+        //     original_value: originalValue,
+        //     rate: rate,
+        //     cost_amount: costAmount,
+        //     formula: `${originalValue} / ${rate} = ${costAmount}`
+        // });
 
  
         const MIN_AMOUNT = 2;
         const MAX_AMOUNT = 80;
         
         if (costAmount < MIN_AMOUNT) {
-            console.error(`Ding cost amount too low: ${costAmount} USD. Minimum is ${MIN_AMOUNT} USD`);
+            // console.error(`Ding cost amount too low: ${costAmount} USD. Minimum is ${MIN_AMOUNT} USD`);
             throw new Error(`Amount too low for Ding provider. Minimum topup amount is ${MIN_AMOUNT} USD equivalent.`);
         }
         
         if (costAmount > MAX_AMOUNT) {
-            console.error(`Ding cost amount too high: ${costAmount} USD. Maximum is ${MAX_AMOUNT} USD`);
+            // console.error(`Ding cost amount too high: ${costAmount} USD. Maximum is ${MAX_AMOUNT} USD`);
             throw new Error(`Amount too high for Ding provider. Maximum topup amount is ${MAX_AMOUNT} USD equivalent.`);
         }
 
-        console.log('✅ Ding cost amount validation passed:', {
-            cost_amount: costAmount,
-            min_allowed: MIN_AMOUNT,
-            max_allowed: MAX_AMOUNT,
-            status: 'VALID'
-        });
+        // console.log('✅ Ding cost amount validation passed:', {
+        //     cost_amount: costAmount,
+        //     min_allowed: MIN_AMOUNT,
+        //     max_allowed: MAX_AMOUNT,
+        //     status: 'VALID'
+        // });
 
         const result = await this.dingProvider.topup({
             order: { id: transaction.id },
@@ -463,13 +463,13 @@ async sendToDingWithCost(transaction) {
             externalId: transaction.id.toString()
         });
 
-        console.log('Ding provider response with rate-based cost:', {
-            original_value: originalValue,
-            rate_used: rate,
-            cost_sent: costAmount,
-            provider_name: dingRate.name,
-            ding_response: result
-        });
+        // console.log('Ding provider response with rate-based cost:', {
+        //     original_value: originalValue,
+        //     rate_used: rate,
+        //     cost_sent: costAmount,
+        //     provider_name: dingRate.name,
+        //     ding_response: result
+        // });
 
         result.rate_used = rate;
         result.provider_name = dingRate.name;
@@ -498,7 +498,7 @@ async sendToDingWithCost(transaction) {
 
 async sendToHesabPay(transaction) {
     try {
-        console.log('Routing to HesabPay for 74 prefix number:', transaction.phone_number);
+        // console.log('Routing to HesabPay for 74 prefix number:', transaction.phone_number);
         
         const result = await this.hesabpayProvider.topup({
             order: { id: transaction.id },
@@ -512,7 +512,7 @@ async sendToHesabPay(transaction) {
             externalId: transaction.id.toString()
         });
 
-        console.log('HesabPay provider response:', result);
+        // console.log('HesabPay provider response:', result);
         return this.mapProviderResponse(transaction, result, 'hesabpay');ق
 
     } catch (error) {
@@ -522,12 +522,12 @@ async sendToHesabPay(transaction) {
 }
 async processTransaction(transaction, dbTransaction = null) {
     try {
-        console.log('Processing transaction:', {
-            id: transaction.id,
-            amount: transaction.amount,
-            currency: transaction.currency, 
-            status: transaction.status
-        });
+        // console.log('Processing transaction:', {
+        //     id: transaction.id,
+        //     amount: transaction.amount,
+        //     currency: transaction.currency, 
+        //     status: transaction.status
+        // });
         
         if (transaction.status === "Paid" || transaction.status === "Confirmed") {
             console.log('Transaction already processed, skipping provider call:', transaction.id);
@@ -540,7 +540,7 @@ async processTransaction(transaction, dbTransaction = null) {
             output: this.server
         }, { transaction: dbTransaction });
 
-        console.log('Transaction updated to Paid:', transaction.id);
+        // console.log('Transaction updated to Paid:', transaction.id);
 
         if (this.server == 2) {
             console.log('Server is 2 - Sending to active provider');
@@ -625,11 +625,11 @@ async processTransaction(transaction, dbTransaction = null) {
         }
 
         if (transaction.output == 1) {
-            console.log('Sending notification for internal order:', transaction.id);
+            // console.log('Sending notification for internal order:', transaction.id);
             await this.sendNotification(transaction);
         }
 
-        console.log('Transaction processing completed:', transaction.id);
+        // console.log('Transaction processing completed:', transaction.id);
 
     } catch (error) {
         console.error('Error processing transaction:', error);
@@ -661,15 +661,15 @@ async processTransaction(transaction, dbTransaction = null) {
 
           if (providerName === 'ding') {
              await this.createDingTransactionRecord(transaction, providerResult, dbTransaction);
-            console.log('💰 DING COST TRANSACTION RECORD:', {
-                transaction_id: transaction.id,
-                original_amount: transaction.amount,
-                cost_amount: providerResult.send_value, 
-                ding_transfer_ref: providerResult.ding_transfer_ref,
-                processing_state: providerResult.processing_state,
-                customer_phone: transaction.phone_number,
-                timestamp: new Date().toISOString()
-            });
+            // console.log('💰 DING COST TRANSACTION RECORD:', {
+            //     transaction_id: transaction.id,
+            //     original_amount: transaction.amount,
+            //     cost_amount: providerResult.send_value, 
+            //     ding_transfer_ref: providerResult.ding_transfer_ref,
+            //     processing_state: providerResult.processing_state,
+            //     customer_phone: transaction.phone_number,
+            //     timestamp: new Date().toISOString()
+            // });
         }
             if (providerName === 'hesabpay') {
                 await this.createHesabPayRecord(transaction, providerResult, dbTransaction);
@@ -695,12 +695,12 @@ async processTransaction(transaction, dbTransaction = null) {
                 }, { transaction: dbTransaction });
             }
 
-            console.log(`Provider transaction recorded successfully for: ${providerName}`);
+            // console.log(`Provider transaction recorded successfully for: ${providerName}`);
  if (providerName === 'ding') {
             const dingResponse = providerResult.originalResult || providerResult;
             console.log('💰 DING COST TRANSACTION RECORD:', {
                 transaction_id: transaction.id,
-                original_amount: transaction.value, // This should be 140 AFN
+                original_amount: transaction.value,
                 cost_amount: dingResponse.send_value || dingResponse.cost_amount_usd,
                 ding_transfer_ref: dingResponse.ding_transfer_ref,
                 processing_state: dingResponse.processing_state,
@@ -719,7 +719,7 @@ async processTransaction(transaction, dbTransaction = null) {
 
 async createDingTransactionRecord(transaction, providerResult, dbTransaction = null) {
     try {
-        console.log('Creating Ding transaction record for transaction:', transaction.id);
+        // console.log('Creating Ding transaction record for transaction:', transaction.id);
         
         const dingResponse = providerResult.originalResult || providerResult;
         
@@ -742,9 +742,9 @@ async createDingTransactionRecord(transaction, providerResult, dbTransaction = n
             response_data: dingResponse
         };
 
-        console.log('Ding transaction record data:', dingData);
+        // console.log('Ding transaction record data:', dingData);
         await DingTransaction.create(dingData, { transaction: dbTransaction });
-        console.log('Ding transaction record created successfully');
+        // console.log('Ding transaction record created successfully');
 
     } catch (error) {
         console.error('Error creating Ding transaction record:', error);
@@ -753,7 +753,7 @@ async createDingTransactionRecord(transaction, providerResult, dbTransaction = n
 }
 async createSetaraganRecords(transaction, providerResult, dbTransaction = null) {
     try {
-        console.log('Creating Setaragan records for transaction:', transaction.id);
+        // console.log('Creating Setaragan records for transaction:', transaction.id);
         
         const providerTxnId = providerResult.setaragan_txn_id || providerResult.provider_txn_id;
         
@@ -770,15 +770,15 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
         const amount = parseFloat(transaction.value) || 0;
         const previousBalance = currentBalance + amount;
         
-        console.log('Setaragan transaction details:', {
-            providerTxnId,
-            currentBalance,
-            amount,
-            previousBalance,
-            setaraganTxnId: providerResult.setaragan_txn_id,
-            originalResultCurrentBalance: providerResult.originalResult?.current_balance,
-            responseDataCurrentBalance: providerResult.response?.data?.current_balance
-        });
+        // console.log('Setaragan transaction details:', {
+        //     providerTxnId,
+        //     currentBalance,
+        //     amount,
+        //     previousBalance,
+        //     setaraganTxnId: providerResult.setaragan_txn_id,
+        //     originalResultCurrentBalance: providerResult.originalResult?.current_balance,
+        //     responseDataCurrentBalance: providerResult.response?.data?.current_balance
+        // });
 
  
         const setaraganData = {
@@ -798,17 +798,17 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
             original_response: JSON.stringify(providerResult.originalResult || providerResult)
         };
 
-        console.log('Creating ApiSataragan record:', {
-            txn_id: setaraganData.txn_id,
-            api_txn_id: setaraganData.api_txn_id,
-            setaragan_txn_id: setaraganData.setaragan_txn_id,
-            current_balance: setaraganData.current_balance
-        });
+        // console.log('Creating ApiSataragan record:', {
+        //     txn_id: setaraganData.txn_id,
+        //     api_txn_id: setaraganData.api_txn_id,
+        //     setaragan_txn_id: setaraganData.setaragan_txn_id,
+        //     current_balance: setaraganData.current_balance
+        // });
 
         await ApiSataragan.create(setaraganData, { transaction: dbTransaction });
 
   
-        console.log('Creating SetaraganTopup record...');
+        // console.log('Creating SetaraganTopup record...');
         const setaraganTopupData = {
             transaction_id: transaction.id,
             customer_mobile: transaction.phone_number,
@@ -827,20 +827,20 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
             response_data: providerResult.originalResult || providerResult
         };
 
-        console.log('SetaraganTopup record data:', {
-            transaction_id: setaraganTopupData.transaction_id,
-            amount: setaraganTopupData.amount,
-            previous_balance: setaraganTopupData.previous_balance,
-            current_balance: setaraganTopupData.current_balance,
-            txn_id: setaraganTopupData.txn_id
-        });
+        // console.log('SetaraganTopup record data:', {
+        //     transaction_id: setaraganTopupData.transaction_id,
+        //     amount: setaraganTopupData.amount,
+        //     previous_balance: setaraganTopupData.previous_balance,
+        //     current_balance: setaraganTopupData.current_balance,
+        //     txn_id: setaraganTopupData.txn_id
+        // });
 
         const setaraganTopup = await SetaraganTopup.create(setaraganTopupData, { transaction: dbTransaction });
 
-        console.log('SetaraganTopup record created with ID:', setaraganTopup.id);
+        // console.log('SetaraganTopup record created with ID:', setaraganTopup.id);
 
 
-        console.log('Updating Sataragan balance...');
+        // console.log('Updating Sataragan balance...');
         await this.updateSataraganBalance({
             current_balance: currentBalance.toString(),
             amount: amount.toString(),
@@ -849,7 +849,7 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
             txn_id: providerTxnId
         }, transaction, dbTransaction);
 
-        console.log('All Setaragan records created successfully for transaction:', transaction.id);
+        // console.log('All Setaragan records created successfully for transaction:', transaction.id);
 
     } catch (error) {
         console.error('Error creating Setaragan records:', error);
@@ -859,15 +859,15 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
 
     async createHesabPayRecord(transaction, providerResult, dbTransaction = null) {
         try {
-            console.log('Creating HesabPay transaction record for transaction:', transaction.id);
+            // console.log('Creating HesabPay transaction record for transaction:', transaction.id);
             
             const providerTxnId = providerResult.hesab_transaction_id || providerResult.provider_txn_id;
             const hesabTransactionId = providerResult.hesab_transaction_id;
             
-            console.log('Transaction IDs for HesabPay record:', {
-                providerTxnId,
-                hesabTransactionId
-            });
+            // console.log('Transaction IDs for HesabPay record:', {
+            //     providerTxnId,
+            //     hesabTransactionId
+            // });
 
             const hesabTransactionData = {
                 status: providerResult.data?.status || "INPROCESS",
@@ -886,15 +886,15 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                 original_response: JSON.stringify(providerResult.originalResult || providerResult)
             };
 
-            console.log('HesabPay record data with proper IDs:', {
-                txn_id: hesabTransactionData.txn_id,
-                api_txn_id: hesabTransactionData.api_txn_id,
-                hesab_transaction_id: hesabTransactionData.hesab_transaction_id
-            });
+            // console.log('HesabPay record data with proper IDs:', {
+            //     txn_id: hesabTransactionData.txn_id,
+            //     api_txn_id: hesabTransactionData.api_txn_id,
+            //     hesab_transaction_id: hesabTransactionData.hesab_transaction_id
+            // });
 
             await ApiSataragan.create(hesabTransactionData, { transaction: dbTransaction });
 
-            console.log('HesabPay transaction record created successfully');
+            // console.log('HesabPay transaction record created successfully');
 
         } catch (error) {
             console.error('Error creating HesabPay record:', error);
@@ -904,19 +904,19 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
 
     async updateSataraganBalance(responseData, transaction, dbTransaction = null) {
         try {
-            console.log('Starting balance update with response data:', responseData);
+            // console.log('Starting balance update with response data:', responseData);
             
             const currentBalance = parseFloat(responseData.current_balance) || 0;
             const amount = parseFloat(responseData.amount) || 0;
             
             const previousBalance = currentBalance + amount;
             
-            console.log('Balance calculation:', {
-                currentBalance,
-                amount,
-                previousBalance,
-                calculated: previousBalance - amount 
-            });
+            // console.log('Balance calculation:', {
+            //     currentBalance,
+            //     amount,
+            //     previousBalance,
+            //     calculated: previousBalance - amount 
+            // });
 
             const newBalanceRecord = await SataraganBalance.create({
                 current_balance: currentBalance,
@@ -928,13 +928,13 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                 notes: `Topup for ${responseData.customer_mobile} - ${responseData.message || 'Success'}`
             }, { transaction: dbTransaction });
             
-            console.log('New Sataragan balance record created:', {
-                id: newBalanceRecord.id,
-                previous_balance: newBalanceRecord.previous_balance,
-                current_balance: newBalanceRecord.current_balance,
-                amount: newBalanceRecord.amount,
-                transaction_id: newBalanceRecord.transaction_id
-            });
+            // console.log('New Sataragan balance record created:', {
+            //     id: newBalanceRecord.id,
+            //     previous_balance: newBalanceRecord.previous_balance,
+            //     current_balance: newBalanceRecord.current_balance,
+            //     amount: newBalanceRecord.amount,
+            //     transaction_id: newBalanceRecord.transaction_id
+            // });
             
             return newBalanceRecord;
         } catch (error) {
@@ -954,19 +954,19 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                 return;
             }
 
-            console.log(`Checking status with ${identifier} for transaction:`, transaction.id);
-            console.log('Provider result for status check:', {
-                provider_txn_id: providerResult.provider_txn_id,
-                hesab_transaction_id: providerResult.hesab_transaction_id,
-                setaragan_txn_id: providerResult.setaragan_txn_id,
-                originalResult: providerResult.originalResult
-            });
+            // console.log(`Checking status with ${identifier} for transaction:`, transaction.id);
+            // console.log('Provider result for status check:', {
+            //     provider_txn_id: providerResult.provider_txn_id,
+            //     hesab_transaction_id: providerResult.hesab_transaction_id,
+            //     setaragan_txn_id: providerResult.setaragan_txn_id,
+            //     originalResult: providerResult.originalResult
+            // });
 
             let statusResult;
             try {
                 if (identifier === 'hesabpay') {
                     const transactionId = providerResult.hesab_transaction_id || providerResult.provider_txn_id;
-                    console.log(`Using transaction ID for HesabPay status check: ${transactionId}`);
+                    // console.log(`Using transaction ID for HesabPay status check: ${transactionId}`);
                     
                     statusResult = await provider.checkStatus(
                         transaction.id.toString(), 
@@ -990,7 +990,7 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                 return;
             }
 
-            console.log(`${identifier} status check result:`, statusResult);
+            // console.log(`${identifier} status check result:`, statusResult);
 
             switch (statusResult.status) {
                 case "success":
@@ -1049,14 +1049,14 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                 });
             }
             
-            console.log(`Transaction ${transaction.id} marked as Confirmed`);
+            // console.log(`Transaction ${transaction.id} marked as Confirmed`);
         } catch (error) {
             console.error(`Error updating ApiSataragan for transaction ${transaction.id}:`, error.message);
         }
     }
 
     async handlePendingStatus(transaction, statusResult, providerName) {
-        console.log(`Transaction ${transaction.id} is still processing with ${providerName}`);
+        // console.log(`Transaction ${transaction.id} is still processing with ${providerName}`);
         
         await transaction.update({ 
             status: "Paid" 
@@ -1131,13 +1131,13 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
             const validStatuses = ['Pending', 'Paid', 'Confirmed', 'failed'];
             const safeStatus = validStatuses.includes(status) ? status : 'failed';
             
-            console.log(`Updating transaction ${transaction.id} to status: ${safeStatus}, output: ${output}`);
+            // console.log(`Updating transaction ${transaction.id} to status: ${safeStatus}, output: ${output}`);
             await transaction.update({ 
                 status: safeStatus,
                 output: output 
             });
             
-            console.log(`Transaction ${transaction.id} updated successfully to ${safeStatus}`);
+            // console.log(`Transaction ${transaction.id} updated successfully to ${safeStatus}`);
         } catch (error) {
             console.error(`Error updating transaction status to ${status}:`, error.message);
             
@@ -1164,7 +1164,7 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
             if (result.status === '1') {
                 const responseData = result.data;
                 
-                console.log('Creating ApiSataragan record with data:', responseData);
+                // console.log('Creating ApiSataragan record with data:', responseData);
 
                 await ApiSataragan.create({
                     status: responseData.status,
@@ -1180,15 +1180,15 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                     provider: 'setaragan'
                 }, { transaction: dbTransaction });
 
-                console.log('ApiSataragan record created');
+                // console.log('ApiSataragan record created');
 
-                console.log('Creating SetaraganTopup record...');
+                // console.log('Creating SetaraganTopup record...');
                 await this.createSetaraganTopupRecord(transaction, responseData, dbTransaction);
 
-                console.log('Updating Sataragan balance...');
+                // console.log('Updating Sataragan balance...');
                 await this.updateSataraganBalance(responseData, transaction, dbTransaction);
 
-                console.log('Setaragan topup record and balance updated');
+                // console.log('Setaragan topup record and balance updated');
 
                 if (responseData.status === 'INPROCESS') {
                     setTimeout(() => {
@@ -1196,7 +1196,7 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                     }, 30000);
                 }
             } else {
-                console.log('Sataragan failed, set to internal processing');
+                // console.log('Sataragan failed, set to internal processing');
                 await transaction.update({ output: 1 }, { transaction: dbTransaction });
             }
         } catch (sataraganError) {
@@ -1217,7 +1217,7 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                 this.getPhoneNumberCategory(transaction.phone_number)
             );
 
-            console.log('Sataragan status check result:', statusResult);
+            // console.log('Sataragan status check result:', statusResult);
 
             if (statusResult.status === "success") {
                 await transaction.update({ 
@@ -1244,8 +1244,8 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
 
     async createSetaraganTopupRecord(transaction, responseData, dbTransaction = null) {
         try {
-            console.log('Starting createSetaraganTopupRecord for transaction:', transaction.id);
-            console.log('Response data received:', JSON.stringify(responseData, null, 2));
+            // console.log('Starting createSetaraganTopupRecord for transaction:', transaction.id);
+            // console.log('Response data received:', JSON.stringify(responseData, null, 2));
             
             let previousBalance = 0;
             const currentBalance = parseFloat(responseData.current_balance) || 0;
@@ -1253,11 +1253,11 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
             
             previousBalance = currentBalance + amount;
             
-            console.log('Calculated previous balance:', {
-                currentBalance,
-                amount,
-                calculatedPrevious: previousBalance
-            });
+            // console.log('Calculated previous balance:', {
+            //     currentBalance,
+            //     amount,
+            //     calculatedPrevious: previousBalance
+            // });
 
             const setaraganTopup = await SetaraganTopup.create({
                 transaction_id: transaction.id,
@@ -1277,14 +1277,14 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                 response_data: responseData
             }, { transaction: dbTransaction });
 
-            console.log('SetaraganTopup record created with balances:', {
-                id: setaraganTopup.id,
-                transaction_id: transaction.id,
-                amount: amount,
-                previous_balance: previousBalance,
-                current_balance: currentBalance,
-                txn_id: responseData.txn_id
-            });
+            // console.log('SetaraganTopup record created with balances:', {
+            //     id: setaraganTopup.id,
+            //     transaction_id: transaction.id,
+            //     amount: amount,
+            //     previous_balance: previousBalance,
+            //     current_balance: currentBalance,
+            //     txn_id: responseData.txn_id
+            // });
 
             return setaraganTopup;
         } catch (error) {
@@ -1300,7 +1300,7 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
             const { provider, identifier } = this.activeProvider;
 
             if (!provider.getBalance) {
-                console.log(`Provider ${identifier} does not support balance checks, using Setaragan`);
+                // console.log(`Provider ${identifier} does not support balance checks, using Setaragan`);
                 return await this.getSetaraganBalance();
             }
 
@@ -1328,9 +1328,17 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
 
     async paymentIntent2(request) {
         const { uid, phone_number, amount, currency = 'USD', real_amount, value, promo_code } = request.body;
-        console.log('Creating payment intent:', {
-            uid, phone_number, amount, currency, real_amount, value, promo_code
-        });
+           console.log('PAYMENT INTENT REQUEST:', {
+        uid, 
+        phone_number, 
+        amount, 
+        currency, 
+        real_amount, 
+        value, 
+        promo_code,
+        timestamp: new Date().toISOString()
+    });
+
 
         const transaction = await sequelize.transaction();
         try {
@@ -1365,7 +1373,7 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                     };
                 }
             }
-
+            console.log('Searching for customer with UID:', uid);
             const customers = await this.stripe.customers.search({
                 query: `name:"${this.stripQuotes(uid)}"`,
             });
@@ -1382,14 +1390,21 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                 customer = customers.data[0];
                 console.log('Existing customer found:', customer.id);
             }
-
+            console.log('Creating ephemeral key');
             const ephemeralKey = await this.stripe.ephemeralKeys.create(
                 { customer: customer.id },
                 { apiVersion: '2023-10-16' }
             );
-            console.log(ephemeralKey, "EPH")
+            // console.log(ephemeralKey, "EPH")
 
             console.log('Ephemeral key created');
+             console.log('💳 Creating payment intent with details:', {
+            amount: Math.round(finalAmount * 100),
+            currency: currency,
+            customer: customer.id,
+            finalAmount: finalAmount,
+            discountAmount: discountAmount
+        });
 
             const paymentIntent = await this.stripe.paymentIntents.create({
                 amount: Math.round(finalAmount * 100),
@@ -1419,6 +1434,7 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
             });
 
             if (paymentIntent.status === 'requires_payment_method') {
+                    console.log('Creating transaction record');
                const newTransaction = await Transaction.create({
                     amount: finalAmount,
                     original_amount: parseFloat(amount),
@@ -1436,11 +1452,11 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                     currency: currency
                 }, { transaction });
 
-                  console.log('Transaction created with currency:', {
-            id: newTransaction.id,
-            currency: newTransaction.currency,
-            amount: newTransaction.amount
-        });
+        //           console.log('Transaction created with currency:', {
+        //     id: newTransaction.id,
+        //     currency: newTransaction.currency,
+        //     amount: newTransaction.amount
+        // });
 
                 await transaction.commit();
 
@@ -1455,11 +1471,20 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                 };
             } else {
                 await transaction.rollback();
+                
                 console.error('Payment intent not in correct state:', paymentIntent.status);
                 throw new Error(`Payment intent status: ${paymentIntent.status}`);
             }
         } catch (error) {
             await transaction.rollback();
+            onsole.error('PAYMENT INTENT CREATION FAILED:', {
+            error_type: error.type,
+            error_message: error.message,
+            error_code: error.code,
+            error_param: error.param,
+            stripe_request_id: error.requestId,
+            raw_stripe_error: error.raw
+        });
             console.error('Error creating payment intent:', error);
             throw error;
         }
@@ -1514,9 +1539,9 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
     }
 
  async handlePaymentSucceeded(paymentIntent) {
-    console.log('Processing successful payment:', paymentIntent.id);
-    console.log('Payment intent metadata:', paymentIntent.metadata);
-    console.log('Payment intent currency:', paymentIntent.currency);
+    // console.log('Processing successful payment:', paymentIntent.id);
+    // console.log('Payment intent metadata:', paymentIntent.metadata);
+    // console.log('Payment intent currency:', paymentIntent.currency);
 
     const dbTransaction = await sequelize.transaction();
     let transaction;
@@ -1549,11 +1574,11 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                     currency: transactionCurrency
                 }, { transaction: dbTransaction });
                 
-                console.log('New transaction created from webhook:', {
-                    id: newTransaction.id,
-                    currency: newTransaction.currency,
-                    amount: newTransaction.amount
-                });
+                // console.log('New transaction created from webhook:', {
+                //     id: newTransaction.id,
+                //     currency: newTransaction.currency,
+                //     amount: newTransaction.amount
+                // });
                 
                 transaction = newTransaction;
                 
@@ -1570,19 +1595,19 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
             return;
         }
 
-        console.log('Found transaction:', {
-            id: transaction.id,
-            status: transaction.status,
-            payment_id: transaction.payment_id,
-            currency: transaction.currency,
-            promo_code: transaction.promo_code
-        });
+        // console.log('Found transaction:', {
+        //     id: transaction.id,
+        //     status: transaction.status,
+        //     payment_id: transaction.payment_id,
+        //     currency: transaction.currency,
+        //     promo_code: transaction.promo_code
+        // });
 
      
-        console.log('=== STRIPE FEE CALCULATION ===');
-        console.log('Payment Intent Amount:', paymentIntent.amount); 
-        console.log('Payment Intent Amount (USD):', (paymentIntent.amount / 100).toFixed(2));
-        console.log('Currency:', paymentIntent.currency);
+        // console.log('=== STRIPE FEE CALCULATION ===');
+        // console.log('Payment Intent Amount:', paymentIntent.amount); 
+        // console.log('Payment Intent Amount (USD):', (paymentIntent.amount / 100).toFixed(2));
+        // console.log('Currency:', paymentIntent.currency);
         
         try {
             const charges = await this.stripe.charges.list({
@@ -1592,47 +1617,47 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
 
             if (charges.data.length > 0) {
                 const charge = charges.data[0];
-                console.log('Charge Details:', {
-                    charge_id: charge.id,
-                    amount: charge.amount,
-                    amount_usd: (charge.amount / 100).toFixed(2),
-                    fee: charge.fee,
-                    fee_usd: charge.fee ? (charge.fee / 100).toFixed(2) : 'N/A',
-                    net_amount: charge.amount - (charge.fee || 0),
-                    net_amount_usd: ((charge.amount - (charge.fee || 0)) / 100).toFixed(2),
-                    status: charge.status,
-                    paid: charge.paid,
-                    currency: charge.currency,
-                    created: new Date(charge.created * 1000),
-                    receipt_url: charge.receipt_url,
-                    description: charge.description,
-                });
+                // console.log('Charge Details:', {
+                //     charge_id: charge.id,
+                //     amount: charge.amount,
+                //     amount_usd: (charge.amount / 100).toFixed(2),
+                //     fee: charge.fee,
+                //     fee_usd: charge.fee ? (charge.fee / 100).toFixed(2) : 'N/A',
+                //     net_amount: charge.amount - (charge.fee || 0),
+                //     net_amount_usd: ((charge.amount - (charge.fee || 0)) / 100).toFixed(2),
+                //     status: charge.status,
+                //     paid: charge.paid,
+                //     currency: charge.currency,
+                //     created: new Date(charge.created * 1000),
+                //     receipt_url: charge.receipt_url,
+                //     description: charge.description,
+                // });
 
                 if (charge.balance_transaction) {
                     const balanceTransaction = await this.stripe.balanceTransactions.retrieve(
                         charge.balance_transaction
                     );
                     
-                    console.log('Balance Transaction Details:', {
-                        gross_amount: balanceTransaction.amount,
-                        gross_amount_usd: (balanceTransaction.amount / 100).toFixed(2),
-                        currency: balanceTransaction.currency,
-                        fee: balanceTransaction.fee,
-                        fee_usd: (balanceTransaction.fee / 100).toFixed(2),
-                        net_amount: balanceTransaction.net,
-                        net_amount_usd: (balanceTransaction.net / 100).toFixed(2),
-                        fee_breakdown: balanceTransaction.fee_details ? balanceTransaction.fee_details.map(fee => ({
-                            type: fee.type,
-                            amount: fee.amount,
-                            amount_usd: (fee.amount / 100).toFixed(2),
-                            description: fee.description,
-                            application: fee.application,
-                        })) : [],
-                        available_on: new Date(balanceTransaction.available_on * 1000).toISOString(),
-                        status: balanceTransaction.status,
-                        created: new Date(balanceTransaction.created * 1000).toISOString(),
-                        reporting_category: balanceTransaction.reporting_category,
-                    });
+                    // console.log('Balance Transaction Details:', {
+                    //     gross_amount: balanceTransaction.amount,
+                    //     gross_amount_usd: (balanceTransaction.amount / 100).toFixed(2),
+                    //     currency: balanceTransaction.currency,
+                    //     fee: balanceTransaction.fee,
+                    //     fee_usd: (balanceTransaction.fee / 100).toFixed(2),
+                    //     net_amount: balanceTransaction.net,
+                    //     net_amount_usd: (balanceTransaction.net / 100).toFixed(2),
+                    //     fee_breakdown: balanceTransaction.fee_details ? balanceTransaction.fee_details.map(fee => ({
+                    //         type: fee.type,
+                    //         amount: fee.amount,
+                    //         amount_usd: (fee.amount / 100).toFixed(2),
+                    //         description: fee.description,
+                    //         application: fee.application,
+                    //     })) : [],
+                    //     available_on: new Date(balanceTransaction.available_on * 1000).toISOString(),
+                    //     status: balanceTransaction.status,
+                    //     created: new Date(balanceTransaction.created * 1000).toISOString(),
+                    //     reporting_category: balanceTransaction.reporting_category,
+                    // });
 
                 
                     await this.createStripeTransactionLog(transaction, balanceTransaction, charge, paymentIntent);
@@ -1672,12 +1697,12 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                 return;
             }
 
-            console.log('Found promo code:', {
-                id: promoCode.id,
-                code: promoCode.code,
-                current_usage: promoCode.used_count,
-                usage_limit: promoCode.usage_limit
-            });
+            // console.log('Found promo code:', {
+            //     id: promoCode.id,
+            //     code: promoCode.code,
+            //     current_usage: promoCode.used_count,
+            //     usage_limit: promoCode.usage_limit
+            // });
 
             const existingPromoUse = await PromoUse.findOne({
                 where: { 
@@ -1703,7 +1728,7 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                     status: 'used',
                     applied: true
                 }, { transaction: dbTransaction });
-                console.log('PromoUse record created');
+                // console.log('PromoUse record created');
             }
 
             const updatedCount = promoCode.used_count + 1;
@@ -1715,11 +1740,11 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                 }
             );
 
-            console.log('Promo code usage count updated:', {
-                code: promoCode.code,
-                old_count: promoCode.used_count,
-                new_count: updatedCount
-            });
+            // console.log('Promo code usage count updated:', {
+            //     code: promoCode.code,
+            //     old_count: promoCode.used_count,
+            //     new_count: updatedCount
+            // });
 
         } catch (error) {
             console.error('Error recording promo code usage:', error);
@@ -1731,6 +1756,52 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
         console.log('Payment failed:', paymentIntent.id);
         
         try {
+               console.log('Payment Failure Details:', {
+            payment_intent_id: paymentIntent.id,
+            status: paymentIntent.status,
+            last_payment_error: paymentIntent.last_payment_error ? {
+                type: paymentIntent.last_payment_error.type,
+                code: paymentIntent.last_payment_error.code,
+                message: paymentIntent.last_payment_error.message,
+                decline_code: paymentIntent.last_payment_error.decline_code,
+                param: paymentIntent.last_payment_error.param,
+                payment_method_type: paymentIntent.last_payment_error.payment_method_type,
+                charge: paymentIntent.last_payment_error.charge
+            } : 'No error details',
+            cancellation_reason: paymentIntent.cancellation_reason,
+            metadata: paymentIntent.metadata,
+            amount: paymentIntent.amount,
+            currency: paymentIntent.currency,
+            created: new Date(paymentIntent.created * 1000)
+        });
+
+        try {
+            const charges = await this.stripe.charges.list({
+                payment_intent: paymentIntent.id,
+                limit: 1
+            });
+
+            if (charges.data.length > 0) {
+                const charge = charges.data[0];
+                console.log('Charge Failure Details:', {
+                    charge_id: charge.id,
+                    failure_code: charge.failure_code,
+                    failure_message: charge.failure_message,
+                    outcome: charge.outcome ? {
+                        network_status: charge.outcome.network_status,
+                        reason: charge.outcome.reason,
+                        risk_level: charge.outcome.risk_level,
+                        risk_score: charge.outcome.risk_score,
+                        seller_message: charge.outcome.seller_message,
+                        type: charge.outcome.type
+                    } : 'No outcome',
+                    paid: charge.paid,
+                    status: charge.status
+                });
+            }
+        } catch (chargeError) {
+            console.error('Error retrieving charge details:', chargeError.message);
+        }
             const transaction = await Transaction.findOne({ 
                 where: { payment_id: paymentIntent.id } 
             });
@@ -1741,17 +1812,68 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
                     stripe_status: paymentIntent.status
                 });
                 
-                console.log('Transaction marked as Failed:', transaction.id);
+                // console.log('Transaction marked as Failed:', transaction.id);
             }
         } catch (error) {
             console.error('Error handling payment failed:', error);
         }
     }
 
+    async handleChargeFailed(charge) {
+    try {
+        console.log('🔴 CHARGE FAILED - Detailed Analysis:');
+        console.log('🔴 Charge ID:', charge.id);
+        console.log('🔴 Charge Failure Details:', {
+            charge_id: charge.id,
+            failure_code: charge.failure_code,
+            failure_message: charge.failure_message,
+            outcome: charge.outcome ? {
+                network_status: charge.outcome.network_status,
+                reason: charge.outcome.reason,
+                risk_level: charge.outcome.risk_level,
+                risk_score: charge.outcome.risk_score,
+                seller_message: charge.outcome.seller_message,
+                type: charge.outcome.type
+            } : 'No outcome',
+            paid: charge.paid,
+            status: charge.status,
+            amount: charge.amount,
+            currency: charge.currency,
+            created: new Date(charge.created * 1000),
+            customer: charge.customer,
+            payment_method: charge.payment_method,
+            payment_intent: charge.payment_intent
+        });
+
+    
+        const transaction = await Transaction.findOne({ 
+            where: { payment_id: charge.payment_intent } 
+        });
+
+        if (transaction) {
+            await transaction.update({
+                status: "Failed",
+                stripe_status: 'failed',
+                failure_reason: `Charge failed: ${charge.failure_code} - ${charge.failure_message}`,
+                failure_code: charge.failure_code,
+                decline_code: charge.outcome?.reason
+            });
+            
+            console.log('🔴 Transaction updated with charge failure details:', {
+                transaction_id: transaction.id,
+                failure_code: charge.failure_code,
+                failure_message: charge.failure_message
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ Error handling charge failed:', error);
+    }
+}
     async getPaymentIntentStatus(paymentIntentId) {
         try {
             const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
-            console.log('Payment intent status:', paymentIntent.status);
+            // console.log('Payment intent status:', paymentIntent.status);
             return paymentIntent.status;
         } catch (error) {
             console.error('Error retrieving payment intent:', error);
@@ -1762,9 +1884,9 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
     async markPaid(request) {
         const { transaction_id, server, source, payment_id } = request.body;
 
-        console.log('Manual mark paid called:', {
-            transaction_id, server, source, payment_id
-        });
+        // console.log('Manual mark paid called:', {
+        //     transaction_id, server, source, payment_id
+        // });
 
         if (server !== undefined && server !== null && server !== '') {
             this.server = parseInt(server);
@@ -1796,7 +1918,7 @@ async createSetaraganRecords(transaction, providerResult, dbTransaction = null) 
 
     async getSetaraganBalance() {
         try {
-            console.log('Getting Setaragan balance via provider');
+            // console.log('Getting Setaragan balance via provider');
             const balanceResult = await this.setaraganProvider.getBalance();
             
             if (balanceResult.status === "success") {

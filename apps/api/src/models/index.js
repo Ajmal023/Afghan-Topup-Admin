@@ -14,6 +14,8 @@ import OrderModel from "./order.js";
 import OrderItemModel from "./order_item.js";
 import PaymentIntentModel from "./payment_intent.js";
 import TopupLogModel from "./topup_log.js";
+import DialogModel from "./Dialog.js";
+import CarouselModel from "./Carousel.js";
 import ReferralCodeModel from "./referral_code.js";
 import ReferralUseModel from "./referral_use.js";
 import TicketModel from "./ticket.js";
@@ -47,6 +49,8 @@ export const sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: "mysql",
 });
 
+export const Dialog = DialogModel(sequelize);
+export const Carousel = CarouselModel(sequelize);
 export const User = UserModel(sequelize);
 export const Session = SessionModel(sequelize);
 export const AuditLog = AuditLogModel(sequelize);
